@@ -221,3 +221,59 @@ class MultiqcModule(BaseMultiqcModule):
             'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
         self.add_section(name='GC Bias Average',plot=linegraph.plot(self.salmon_bias_Average, pconfig_GCBias_Average))
+        
+        
+        self.salmon_merge_Average=[]
+
+        keyarray = self.salmon_bias_LastSampleWights.keys()
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_bias_LastSampleWights[key]:
+                temp[keys] = self.salmon_bias_LastSampleWights[key][keys]
+            temp2.append(temp)    
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_merge_Average.append(final)
+        
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_bias_Average[key]:
+                temp[keys] = self.salmon_bias_Average[key][keys]
+            temp2.append(temp)    
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_merge_Average.append(final)
+        
+        # GC Bias Average across all samples
+        pconfig_Merge_Low = {
+            'smooth_points': 500,
+            'title': 'Merged Samples.',
+            'ylab': 'Ratio',
+            'xlab': 'Bias',
+            'ymin': 0,
+            'xmin': 0,
+            'xmax': 100,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            'data_labels': ['low', 'average', '3', '4', '5', '6', '7', '8', '9', '0']
+        }
+        
+        pconfig_Merge_Average = {
+            'smooth_points': 500,
+            'title': 'Merged Samples.',
+            'ylab': 'Ratio',
+            'xlab': 'Bias',
+            'ymin': 0,
+            'xmin': 0,
+            'xmax': 100,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            'data_labels': ['low', 'average', '3', '4', '5', '6', '7', '8', '9', '0']
+        }
+        self.add_section(name='GC Merge Average',plot=linegraph.plot(self.salmon_merge_Average, pconfig_Merge_Average))
