@@ -230,6 +230,7 @@ class MultiqcModule(BaseMultiqcModule):
         temp={}
         count = 0
         final = {}
+        data_labels=[]
         for key in keyarray:
             temp = {}
             for keys in self.salmon_bias_LastSampleWights[key]:
@@ -238,6 +239,7 @@ class MultiqcModule(BaseMultiqcModule):
             final[key] = temp2[count]
             count += 1
         self.salmon_merge_Average.append(final)
+        data_labels.append({'name':'low'})
         
         temp2 = []
         temp={}
@@ -251,19 +253,7 @@ class MultiqcModule(BaseMultiqcModule):
             final[key] = temp2[count]
             count += 1
         self.salmon_merge_Average.append(final)
-        
-        # GC Bias Average across all samples
-        pconfig_Merge_Low = {
-            'smooth_points': 500,
-            'title': 'Merged Samples.',
-            'ylab': 'Ratio',
-            'xlab': 'Bias',
-            'ymin': 0,
-            'xmin': 0,
-            'xmax': 100,
-            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-            'data_labels': ['low', 'average', '3', '4', '5', '6', '7', '8', '9', '0']
-        }
+        data_labels.append({'name':'average'})
         
         pconfig_Merge_Average = {
             'smooth_points': 500,
@@ -274,6 +264,6 @@ class MultiqcModule(BaseMultiqcModule):
             'xmin': 0,
             'xmax': 100,
             'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-            'data_labels': ['low', 'average', '3', '4', '5', '6', '7', '8', '9', '0']
+            'data_labels': data_labels
         }
         self.add_section(name='GC Merge Average',plot=linegraph.plot(self.salmon_merge_Average, pconfig_Merge_Average))
