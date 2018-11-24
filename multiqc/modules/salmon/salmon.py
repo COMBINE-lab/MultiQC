@@ -10,7 +10,6 @@ import os
 from .GCModel import GCModel
 
 from multiqc.plots import linegraph
-from multiqc.plots import bargraph
 from multiqc.modules.base_module import BaseMultiqcModule
 import numpy as np
 
@@ -51,6 +50,29 @@ class MultiqcModule(BaseMultiqcModule):
         self.salmon_bias_Average=dict()
         self.salmon_bias_TotalAverage = dict()
 
+        #Declaring dicts to hold sequence 3' and 5' marginalized ratio for all bases i.e A,C,G,T and the average bias for 3' and 5'
+        self.salmon_seq3A = dict()
+        self.salmon_seq3C = dict()
+        self.salmon_seq3G = dict()
+        self.salmon_seq3T = dict()
+        self.salmon_seq5A = dict()
+        self.salmon_seq5C = dict()
+        self.salmon_seq5G = dict()
+        self.salmon_seq5T = dict()
+        self.salmon_seq3Average = dict()
+        self.salmon_seq5Average = dict()
+
+        #Declaring dict to hold the ratios of Effective v/s Actual length of samples from quant.sf file
+        self.salmon_quant =dict()
+
+        # Declaring lists to hold arrays for every sample used in Heatmaps
+        self.heatmapFirstrow=[]
+        self.heatMapMiddleRow=[]
+        self.heatMapLastRow=[]
+        self.averageBiasHeatMap=[]
+        self.salmon_seq3HeatMap=[]
+        self.salmon_seq5HeatMap=[]
+
         # List of all the sample names
         self.sample_names=[]
 
@@ -87,7 +109,12 @@ class MultiqcModule(BaseMultiqcModule):
                 sampleAverage[count]=totalSampleAverage
                 count = count +1
                 self.salmon_bias_TotalAverage[s_name_trimmed[0]] = sampleAverage
+                #Avergaing ratios for each row used in Heatmap for every row
+                self.heatmapFirstrow.append(first_Row.tolist())
+                self.heatMapMiddleRow.append(middle_Row.tolist())
+                self.heatMapLastRow.append(last_Row.tolist())
 
+                heatmapAverage=[]
                 # Iterating over all the buckets to create Ordered Dicts
                 for i in range(len(first_Row)):
                     index = i*(100/len(first_Row))
@@ -95,12 +122,14 @@ class MultiqcModule(BaseMultiqcModule):
                     middleRatioWeight[index] = middle_Row[i]
                     lastRatioWeight[index] = last_Row[i]
                     average[index]=np.mean([first_Row[i],middle_Row[i],last_Row[i]])
+                    heatmapAverage.append(average[index])
 
                 # Setting all the ordered dicts to the outermost Dictionaries with sample name as keys
                 self.salmon_bias_FirstSampleWeights[s_name]=firstRatioWeight
                 self.salmon_bias_MiddleSampleWeights[s_name] = middleRatioWeight
                 self.salmon_bias_LastSampleWights[s_name] = lastRatioWeight
                 self.salmon_bias_Average[s_name] = average
+                self.averageBiasHeatMap.append(heatmapAverage)
 
         # Parse Fragment Length Distribution logs
         self.salmon_fld = dict()
@@ -118,8 +147,6 @@ class MultiqcModule(BaseMultiqcModule):
                     self.add_data_source(f, s_name)
                     self.salmon_fld[s_name] = parsed
 
-        # Parse Fragment Length Distribution logs
-
         # Filter to strip out ignored sample names
         self.salmon_meta = self.ignore_samples(self.salmon_meta)
         self.salmon_fld = self.ignore_samples(self.salmon_fld)
@@ -135,6 +162,12 @@ class MultiqcModule(BaseMultiqcModule):
 
         if len(self.salmon_bias_Average) > 0:
             log.info("Found {} GC Bias".format(len(self.salmon_bias_Average)))
+
+        if len(self.salmon_seq3Average) > 0:
+            log.info("Found {} Sequence 3' bias".format(len(self.salmon_seq3Average)))
+
+        if len(self.salmon_seq5Average) > 0:
+            log.info("Found {} Sequence 5' bias".format(len(self.salmon_seq5Average)))
 
         # Add alignment rate to the general stats table
         headers = OrderedDict()
@@ -221,49 +254,3 @@ class MultiqcModule(BaseMultiqcModule):
             'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
         }
         self.add_section(name='GC Bias Average',plot=linegraph.plot(self.salmon_bias_Average, pconfig_GCBias_Average))
-        
-        
-        self.salmon_merge_Average=[]
-
-        keyarray = self.salmon_bias_LastSampleWights.keys()
-        temp2 = []
-        temp={}
-        count = 0
-        final = {}
-        data_labels=[]
-        for key in keyarray:
-            temp = {}
-            for keys in self.salmon_bias_LastSampleWights[key]:
-                temp[keys] = self.salmon_bias_LastSampleWights[key][keys]
-            temp2.append(temp)    
-            final[key] = temp2[count]
-            count += 1
-        self.salmon_merge_Average.append(final)
-        data_labels.append({'name':'low'})
-        
-        temp2 = []
-        temp={}
-        count = 0
-        final = {}
-        for key in keyarray:
-            temp = {}
-            for keys in self.salmon_bias_Average[key]:
-                temp[keys] = self.salmon_bias_Average[key][keys]
-            temp2.append(temp)    
-            final[key] = temp2[count]
-            count += 1
-        self.salmon_merge_Average.append(final)
-        data_labels.append({'name':'average'})
-        
-        pconfig_Merge_Average = {
-            'smooth_points': 500,
-            'title': 'Merged Samples.',
-            'ylab': 'Ratio',
-            'xlab': 'Bias',
-            'ymin': 0,
-            'xmin': 0,
-            'xmax': 100,
-            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-            'data_labels': data_labels
-        }
-        self.add_section(name='GC Merge Average',plot=linegraph.plot(self.salmon_merge_Average, pconfig_Merge_Average))

@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as py
 
 class GCModel:
     def __init__(self):
