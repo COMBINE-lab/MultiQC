@@ -49,6 +49,7 @@ class MultiqcModule(BaseMultiqcModule):
         self.salmon_bias_LastSampleWights = dict()
         self.salmon_bias_Average=dict()
         self.salmon_bias_TotalAverage = dict()
+        self.salmon_bias_Merged = []
 
         #Declaring dicts to hold sequence 3' and 5' marginalized ratio for all bases i.e A,C,G,T and the average bias for 3' and 5'
         self.salmon_seq3A = dict()
@@ -202,55 +203,75 @@ class MultiqcModule(BaseMultiqcModule):
         }
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )
 
-        # GC Bias First Row plot
-        pconfig_GCBias_Begin = {
-            'smooth_points': 500,
-            'title': 'Salmon : GC Bias Ratio in Beginning of Read',
-            'ylab': 'Ratio',
-            'xlab': 'GC Biases',
-            'ymin': 0,
-            'xmin': 0,
-            'xmax': 100,
-            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section(name='GC Bias First Row',plot=linegraph.plot(self.salmon_bias_FirstSampleWeights, pconfig_GCBias_Begin))
+        # GC Bias Plots.
+        keyarray = self.salmon_bias_FirstSampleWeights.keys()
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        data_labels=[]
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_bias_FirstSampleWeights[key]:
+                temp[keys] = self.salmon_bias_FirstSampleWeights[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_bias_Merged.append(final)
+        data_labels.append({'name':'first'})
 
-        # GC Bias Middle row plot
-        pconfig_GCBias_Middle = {
-            'smooth_points': 500,
-            'title': 'Salmon : GC Bias Ratio in Middle of Read',
-            'ylab': 'Ratio',
-            'xlab': 'GC Biases',
-            'ymin': 0,
-            'xmin': 0,
-            'xmax': 100,
-            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section(name ='GC Bias Middle Row',plot=linegraph.plot(self.salmon_bias_MiddleSampleWeights, pconfig_GCBias_Middle))
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_bias_MiddleSampleWeights[key]:
+                temp[keys] = self.salmon_bias_MiddleSampleWeights[key][keys]
+            temp2.append(temp)    
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_bias_Merged.append(final)
+        data_labels.append({'name':'middle'})
 
-        # GC Bias Last row plot
-        pconfig_GCBias_Last = {
-            'smooth_points': 500,
-            'id': 'salmon_plot6',
-            'title': 'Salmon : GC Bias Ratio in Last of Read',
-            'ylab': 'Ratio',
-            'xlab': 'GC Biases',
-            'ymin': 0,
-            'xmin': 0,
-            'xmax': 100,
-            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
-        }
-        self.add_section(name='GC Bias Last Row',plot=linegraph.plot(self.salmon_bias_LastSampleWights, pconfig_GCBias_Last))
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_bias_LastSampleWights[key]:
+                temp[keys] = self.salmon_bias_LastSampleWights[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_bias_Merged.append(final)
+        data_labels.append({'name':'last'})
 
-        # GC Bias Average across all samples
-        pconfig_GCBias_Average = {
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_bias_Average[key]:
+                temp[keys] = self.salmon_bias_Average[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_bias_Merged.append(final)
+        data_labels.append({'name':'average'})
+
+        
+        pconfig_bias_Merged = {
             'smooth_points': 500,
-            'title': 'Salmon : Average GC Bias of all samples',
+            'title': 'GC Bias Plots.',
             'ylab': 'Ratio',
             'xlab': 'Bias',
             'ymin': 0,
             'xmin': 0,
             'xmax': 100,
             'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            'data_labels': data_labels
         }
-        self.add_section(name='GC Bias Average',plot=linegraph.plot(self.salmon_bias_Average, pconfig_GCBias_Average))
+        self.add_section(name='GC Bias Plots',plot=linegraph.plot(self.salmon_bias_Merged, pconfig_bias_Merged))
