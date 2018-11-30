@@ -8,7 +8,7 @@ import json
 import logging
 import os
 from .GCModel import GCModel
-
+from .SeqModel import SeqModel
 from multiqc.plots import linegraph
 from multiqc.modules.base_module import BaseMultiqcModule
 import numpy as np
@@ -56,15 +56,14 @@ class MultiqcModule(BaseMultiqcModule):
         self.salmon_seq3C = dict()
         self.salmon_seq3G = dict()
         self.salmon_seq3T = dict()
+        self.salmon_seq3Average = dict()
+        self.salmon_seq3_Merged = []
         self.salmon_seq5A = dict()
         self.salmon_seq5C = dict()
         self.salmon_seq5G = dict()
         self.salmon_seq5T = dict()
-        self.salmon_seq3Average = dict()
         self.salmon_seq5Average = dict()
-
-        #Declaring dict to hold the ratios of Effective v/s Actual length of samples from quant.sf file
-        self.salmon_quant =dict()
+        self.salmon_seq5_Merged = []
 
         # Declaring lists to hold arrays for every sample used in Heatmaps
         self.heatmapFirstrow=[]
@@ -100,22 +99,10 @@ class MultiqcModule(BaseMultiqcModule):
                 gc = GCModel() # Instantiate GCModel class
                 # Call the GCModel method to get all observed and expected values
                 gc.from_file(os.path.dirname(f['root']))
-                #print(gc.obs_)
                 first_Row = (gc.obs_[0] / gc.exp_[0])*(gc.obs_weights_[0]/gc.exp_weights_[0])
                 middle_Row = (gc.obs_[1] / gc.exp_[1])*(gc.obs_weights_[1]/gc.exp_weights_[1])
                 last_Row = (gc.obs_[2] / gc.exp_[2])*(gc.obs_weights_[2]/gc.exp_weights_[2])
-
-                # Avergaing all the ratios for the entire sample
-                totalSampleAverage = ( (sum(first_Row)+sum(middle_Row)+sum(last_Row))/(len(first_Row)+len(middle_Row)+len(last_Row)))
-                sampleAverage[count]=totalSampleAverage
-                count = count +1
-                self.salmon_bias_TotalAverage[s_name_trimmed[0]] = sampleAverage
-                #Avergaing ratios for each row used in Heatmap for every row
-                self.heatmapFirstrow.append(first_Row.tolist())
-                self.heatMapMiddleRow.append(middle_Row.tolist())
-                self.heatMapLastRow.append(last_Row.tolist())
-
-                heatmapAverage=[]
+                
                 # Iterating over all the buckets to create Ordered Dicts
                 for i in range(len(first_Row)):
                     index = i*(100/len(first_Row))
@@ -123,14 +110,66 @@ class MultiqcModule(BaseMultiqcModule):
                     middleRatioWeight[index] = middle_Row[i]
                     lastRatioWeight[index] = last_Row[i]
                     average[index]=np.mean([first_Row[i],middle_Row[i],last_Row[i]])
-                    heatmapAverage.append(average[index])
 
                 # Setting all the ordered dicts to the outermost Dictionaries with sample name as keys
                 self.salmon_bias_FirstSampleWeights[s_name]=firstRatioWeight
                 self.salmon_bias_MiddleSampleWeights[s_name] = middleRatioWeight
                 self.salmon_bias_LastSampleWights[s_name] = lastRatioWeight
                 self.salmon_bias_Average[s_name] = average
-                self.averageBiasHeatMap.append(heatmapAverage)
+            
+            # Check if folder contains sequence bias files
+            seqBias = checkJSONForBias(os.path.dirname(f['root']), 'seqBias')
+            if seqBias:
+                # Dicts for every base for 3' and 5' sequence, average 3' and average 5' and quant dict
+                seq3A = OrderedDict()
+                seq5A = OrderedDict()
+                seq3C = OrderedDict()
+                seq5C = OrderedDict()
+                seq3G = OrderedDict()
+                seq5G = OrderedDict()
+                seq3T = OrderedDict()
+                seq5T = OrderedDict()
+                seq3_Average = OrderedDict()
+                seq5_Average = OrderedDict()
+
+                # Calculate the ratio of all rows for observed by expected
+                seq = SeqModel()# Instantiate SeqModel class
+                # Call the SeqModel method to get all observed and expected ratios
+                seq.from_file(os.path.dirname(f['root']))
+                seq3A_prob = seq.obs3_[0] / seq.exp3_[0]
+                seq3C_prob = seq.obs3_[1] / seq.exp3_[1]
+                seq3G_prob = seq.obs3_[2] / seq.exp3_[2]
+                seq3T_prob = seq.obs3_[3] / seq.exp3_[3]
+                seq5A_prob = seq.obs5_[0] / seq.exp5_[0]
+                seq5C_prob = seq.obs5_[1] / seq.exp5_[1]
+                seq5G_prob = seq.obs5_[2] / seq.exp5_[2]
+                seq5T_prob = seq.obs5_[3] / seq.exp5_[3]
+
+                # Iterate over the contect length to create all Orderede Dictonaries of (x,y) values for linegraph and list for Heatmap
+                for i in range(len(seq3A_prob)):
+                    index = i * (100 / len(seq3A_prob))
+                    seq3A[index] = seq3A_prob[i]
+                    seq5A[index] = seq5A_prob[i]
+                    seq3C[index] = seq3C_prob[i]
+                    seq5C[index] = seq5C_prob[i]
+                    seq3G[index] = seq3G_prob[i]
+                    seq5G[index] = seq5G_prob[i]
+                    seq3T[index] = seq3T_prob[i]
+                    seq5T[index] = seq5T_prob[i]
+                    seq3_Average[index] = np.mean([seq3A_prob[i], seq3C_prob[i], seq3G_prob[i], seq3T_prob[i]])
+                    seq5_Average[index] = np.mean([seq5A_prob[i], seq5C_prob[i], seq5G_prob[i], seq5T_prob[i]])
+
+                # Setting all the ordered dicts to the outermost Dictionaries with sample name as keys
+                self.salmon_seq3A[s_name] = seq3A
+                self.salmon_seq5A[s_name] = seq5A
+                self.salmon_seq3C[s_name] = seq3C
+                self.salmon_seq5C[s_name] = seq5C
+                self.salmon_seq3G[s_name] = seq3G
+                self.salmon_seq5G[s_name] = seq5G
+                self.salmon_seq3T[s_name] = seq3T
+                self.salmon_seq5T[s_name] = seq5T
+                self.salmon_seq3Average[s_name] = seq3_Average
+                self.salmon_seq5Average[s_name] = seq5_Average
 
         # Parse Fragment Length Distribution logs
         self.salmon_fld = dict()
@@ -262,7 +301,6 @@ class MultiqcModule(BaseMultiqcModule):
         self.salmon_bias_Merged.append(final)
         data_labels.append({'name':'average'})
 
-        
         pconfig_bias_Merged = {
             'smooth_points': 500,
             'title': 'GC Bias Plots.',
@@ -275,3 +313,90 @@ class MultiqcModule(BaseMultiqcModule):
             'data_labels': data_labels
         }
         self.add_section(name='GC Bias Plots',plot=linegraph.plot(self.salmon_bias_Merged, pconfig_bias_Merged))
+
+        # Seq 3 Plots.
+
+        keyarray = self.salmon_seq3A.keys()
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        data_labels=[]
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq3A[key]:
+                temp[keys] = self.salmon_seq3A[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq3_Merged.append(final)
+        data_labels.append({'name':'A'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq3C[key]:
+                temp[keys] = self.salmon_seq3C[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq3_Merged.append(final)
+        data_labels.append({'name':'C'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq3G[key]:
+                temp[keys] = self.salmon_seq3G[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq3_Merged.append(final)
+        data_labels.append({'name':'G'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq3T[key]:
+                temp[keys] = self.salmon_seq3T[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq3_Merged.append(final)
+        data_labels.append({'name':'T'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq3Average[key]:
+                temp[keys] = self.salmon_seq3Average[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq3_Merged.append(final)
+        data_labels.append({'name':'Average'})
+
+        pconfig_seq3_Merged = {
+            'smooth_points': 500,
+            'title': 'Seq 3 Plots.',
+            'ylab': 'Ratio',
+            'xlab': 'Bias',
+            'ymin': 0,
+            'xmin': 0,
+            'xmax': 100,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            'data_labels': data_labels
+        }
+        self.add_section(name='Seq 3 Plots',plot=linegraph.plot(self.salmon_seq3_Merged, pconfig_seq3_Merged))
