@@ -243,6 +243,7 @@ class MultiqcModule(BaseMultiqcModule):
         self.add_section( plot = linegraph.plot(self.salmon_fld, pconfig) )
 
         # GC Bias Plots.
+
         keyarray = self.salmon_bias_FirstSampleWeights.keys()
         temp2 = []
         temp={}
@@ -400,3 +401,90 @@ class MultiqcModule(BaseMultiqcModule):
             'data_labels': data_labels
         }
         self.add_section(name='Seq 3 Plots',plot=linegraph.plot(self.salmon_seq3_Merged, pconfig_seq3_Merged))
+        
+        # Seq 5 Plots.
+
+        keyarray = self.salmon_seq5A.keys()
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        data_labels=[]
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq5A[key]:
+                temp[keys] = self.salmon_seq5A[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq5_Merged.append(final)
+        data_labels.append({'name':'A'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq5C[key]:
+                temp[keys] = self.salmon_seq5C[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq5_Merged.append(final)
+        data_labels.append({'name':'C'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq5G[key]:
+                temp[keys] = self.salmon_seq5G[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq5_Merged.append(final)
+        data_labels.append({'name':'G'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq5T[key]:
+                temp[keys] = self.salmon_seq5T[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq5_Merged.append(final)
+        data_labels.append({'name':'T'})
+
+        temp2 = []
+        temp={}
+        count = 0
+        final = {}
+        for key in keyarray:
+            temp = {}
+            for keys in self.salmon_seq5Average[key]:
+                temp[keys] = self.salmon_seq5Average[key][keys]
+            temp2.append(temp)
+            final[key] = temp2[count]
+            count += 1
+        self.salmon_seq5_Merged.append(final)
+        data_labels.append({'name':'Average'})
+
+        pconfig_seq5_Merged = {
+            'smooth_points': 500,
+            'title': 'Seq 5 Plots.',
+            'ylab': 'Ratio',
+            'xlab': 'Bias',
+            'ymin': 0,
+            'xmin': 0,
+            'xmax': 100,
+            'tt_label': '<b>{point.x:,.0f} bp</b>: {point.y:,.0f}',
+            'data_labels': data_labels
+        }
+        self.add_section(name='Seq 5 Plots',plot=linegraph.plot(self.salmon_seq5_Merged, pconfig_seq5_Merged))
