@@ -10,6 +10,7 @@ import os
 from .GCModel import GCModel
 from .SeqModel import SeqModel
 from multiqc.plots import linegraph
+from multiqc.plots import heatmap
 from multiqc.modules.base_module import BaseMultiqcModule
 import numpy as np
 
@@ -50,6 +51,8 @@ class MultiqcModule(BaseMultiqcModule):
         self.salmon_bias_Average=dict()
         self.salmon_bias_TotalAverage = dict()
         self.salmon_bias_Merged = []
+        self.heatmap_gc_Merged = []
+        self.heatmap_seq_Merged = []
 
         #Declaring dicts to hold sequence 3' and 5' marginalized ratio for all bases i.e A,C,G,T and the average bias for 3' and 5'
         self.salmon_seq3A = dict()
@@ -102,7 +105,12 @@ class MultiqcModule(BaseMultiqcModule):
                 first_Row = (gc.obs_[0] / gc.exp_[0])*(gc.obs_weights_[0]/gc.exp_weights_[0])
                 middle_Row = (gc.obs_[1] / gc.exp_[1])*(gc.obs_weights_[1]/gc.exp_weights_[1])
                 last_Row = (gc.obs_[2] / gc.exp_[2])*(gc.obs_weights_[2]/gc.exp_weights_[2])
-                
+                #Avergaing ratios for each row used in Heatmap for every row
+                self.heatmapFirstrow.append(first_Row.tolist())
+                self.heatMapMiddleRow.append(middle_Row.tolist())
+                self.heatMapLastRow.append(last_Row.tolist())
+
+                heatmapAverage=[]
                 # Iterating over all the buckets to create Ordered Dicts
                 for i in range(len(first_Row)):
                     index = i*(100/len(first_Row))
@@ -110,13 +118,15 @@ class MultiqcModule(BaseMultiqcModule):
                     middleRatioWeight[index] = middle_Row[i]
                     lastRatioWeight[index] = last_Row[i]
                     average[index]=np.mean([first_Row[i],middle_Row[i],last_Row[i]])
+                    heatmapAverage.append(average[index])
 
                 # Setting all the ordered dicts to the outermost Dictionaries with sample name as keys
                 self.salmon_bias_FirstSampleWeights[s_name]=firstRatioWeight
                 self.salmon_bias_MiddleSampleWeights[s_name] = middleRatioWeight
                 self.salmon_bias_LastSampleWights[s_name] = lastRatioWeight
                 self.salmon_bias_Average[s_name] = average
-            
+                self.averageBiasHeatMap.append(heatmapAverage)
+
             # Check if folder contains sequence bias files
             seqBias = checkJSONForBias(os.path.dirname(f['root']), 'seqBias')
             if seqBias:
@@ -145,6 +155,8 @@ class MultiqcModule(BaseMultiqcModule):
                 seq5G_prob = seq.obs5_[2] / seq.exp5_[2]
                 seq5T_prob = seq.obs5_[3] / seq.exp5_[3]
 
+                seq3_HeatMap = []
+                seq5_HeatMap = []
                 # Iterate over the contect length to create all Orderede Dictonaries of (x,y) values for linegraph and list for Heatmap
                 for i in range(len(seq3A_prob)):
                     index = i * (100 / len(seq3A_prob))
@@ -158,6 +170,8 @@ class MultiqcModule(BaseMultiqcModule):
                     seq5T[index] = seq5T_prob[i]
                     seq3_Average[index] = np.mean([seq3A_prob[i], seq3C_prob[i], seq3G_prob[i], seq3T_prob[i]])
                     seq5_Average[index] = np.mean([seq5A_prob[i], seq5C_prob[i], seq5G_prob[i], seq5T_prob[i]])
+                    seq3_HeatMap.append(seq3_Average[index])
+                    seq5_HeatMap.append(seq5_Average[index])
 
                 # Setting all the ordered dicts to the outermost Dictionaries with sample name as keys
                 self.salmon_seq3A[s_name] = seq3A
@@ -170,6 +184,8 @@ class MultiqcModule(BaseMultiqcModule):
                 self.salmon_seq5T[s_name] = seq5T
                 self.salmon_seq3Average[s_name] = seq3_Average
                 self.salmon_seq5Average[s_name] = seq5_Average
+                self.salmon_seq3HeatMap.append(seq3_HeatMap)
+                self.salmon_seq5HeatMap.append(seq5_HeatMap)
 
         # Parse Fragment Length Distribution logs
         self.salmon_fld = dict()
@@ -244,62 +260,58 @@ class MultiqcModule(BaseMultiqcModule):
 
         # GC Bias Plots.
 
-        keyarray = self.salmon_bias_FirstSampleWeights.keys()
-        temp2 = []
-        temp={}
+        filenames = self.salmon_bias_FirstSampleWeights.keys()
+        rows = []
         count = 0
-        final = {}
+        plot = {}
         data_labels=[]
-        for key in keyarray:
+        for key in filenames:
             temp = {}
             for keys in self.salmon_bias_FirstSampleWeights[key]:
                 temp[keys] = self.salmon_bias_FirstSampleWeights[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_bias_Merged.append(final)
+        self.salmon_bias_Merged.append(plot)
         data_labels.append({'name':'first'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_bias_MiddleSampleWeights[key]:
                 temp[keys] = self.salmon_bias_MiddleSampleWeights[key][keys]
-            temp2.append(temp)    
-            final[key] = temp2[count]
+            rows.append(temp)    
+            plot[key] = rows[count]
             count += 1
-        self.salmon_bias_Merged.append(final)
+        self.salmon_bias_Merged.append(plot)
         data_labels.append({'name':'middle'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_bias_LastSampleWights[key]:
                 temp[keys] = self.salmon_bias_LastSampleWights[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_bias_Merged.append(final)
+        self.salmon_bias_Merged.append(plot)
         data_labels.append({'name':'last'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_bias_Average[key]:
                 temp[keys] = self.salmon_bias_Average[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_bias_Merged.append(final)
+        self.salmon_bias_Merged.append(plot)
         data_labels.append({'name':'average'})
 
         pconfig_bias_Merged = {
@@ -317,76 +329,72 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Seq 3 Plots.
 
-        keyarray = self.salmon_seq3A.keys()
-        temp2 = []
-        temp={}
+        filenames = self.salmon_seq3A.keys()
+        rows = []
         count = 0
-        final = {}
+        plot = {}
         data_labels=[]
-        for key in keyarray:
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq3A[key]:
                 temp[keys] = self.salmon_seq3A[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq3_Merged.append(final)
+        self.salmon_seq3_Merged.append(plot)
         data_labels.append({'name':'A'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq3C[key]:
                 temp[keys] = self.salmon_seq3C[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq3_Merged.append(final)
+        self.salmon_seq3_Merged.append(plot)
         data_labels.append({'name':'C'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq3G[key]:
                 temp[keys] = self.salmon_seq3G[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq3_Merged.append(final)
+        self.salmon_seq3_Merged.append(plot)
         data_labels.append({'name':'G'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq3T[key]:
                 temp[keys] = self.salmon_seq3T[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq3_Merged.append(final)
+        self.salmon_seq3_Merged.append(plot)
         data_labels.append({'name':'T'})
 
-        temp2 = []
+        rows = []
         temp={}
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq3Average[key]:
                 temp[keys] = self.salmon_seq3Average[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq3_Merged.append(final)
+        self.salmon_seq3_Merged.append(plot)
         data_labels.append({'name':'Average'})
 
         pconfig_seq3_Merged = {
@@ -404,76 +412,71 @@ class MultiqcModule(BaseMultiqcModule):
         
         # Seq 5 Plots.
 
-        keyarray = self.salmon_seq5A.keys()
-        temp2 = []
-        temp={}
+        filenames = self.salmon_seq5A.keys()
+        rows = []
         count = 0
-        final = {}
+        plot = {}
         data_labels=[]
-        for key in keyarray:
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq5A[key]:
                 temp[keys] = self.salmon_seq5A[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq5_Merged.append(final)
+        self.salmon_seq5_Merged.append(plot)
         data_labels.append({'name':'A'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq5C[key]:
                 temp[keys] = self.salmon_seq5C[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq5_Merged.append(final)
+        self.salmon_seq5_Merged.append(plot)
         data_labels.append({'name':'C'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq5G[key]:
                 temp[keys] = self.salmon_seq5G[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq5_Merged.append(final)
+        self.salmon_seq5_Merged.append(plot)
         data_labels.append({'name':'G'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq5T[key]:
                 temp[keys] = self.salmon_seq5T[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq5_Merged.append(final)
+        self.salmon_seq5_Merged.append(plot)
         data_labels.append({'name':'T'})
 
-        temp2 = []
-        temp={}
+        rows = []
         count = 0
-        final = {}
-        for key in keyarray:
+        plot = {}
+        for key in filenames:
             temp = {}
             for keys in self.salmon_seq5Average[key]:
                 temp[keys] = self.salmon_seq5Average[key][keys]
-            temp2.append(temp)
-            final[key] = temp2[count]
+            rows.append(temp)
+            plot[key] = rows[count]
             count += 1
-        self.salmon_seq5_Merged.append(final)
+        self.salmon_seq5_Merged.append(plot)
         data_labels.append({'name':'Average'})
 
         pconfig_seq5_Merged = {
@@ -488,3 +491,33 @@ class MultiqcModule(BaseMultiqcModule):
             'data_labels': data_labels
         }
         self.add_section(name='Seq 5 Plots',plot=linegraph.plot(self.salmon_seq5_Merged, pconfig_seq5_Merged))
+
+        # First Row of all samples Heatmap
+        FirstRowCoff = np.corrcoef(self.heatmapFirstrow)
+        self.add_section(name='GC Bias First Row Heatmap', description='Heatmap to display variance between first row ratios of all the samples',
+                         plot=heatmap.plot(FirstRowCoff, self.sample_names, self.sample_names))
+
+        # Middle Row of all samples Heatmap
+        MiddleRowCoff = np.corrcoef(self.heatMapMiddleRow)
+        self.add_section(name='GC Bias Middle Row Heatmap', description='Heatmap to display variance between middle row ratios of all the samples',
+                         plot=heatmap.plot(MiddleRowCoff, self.sample_names, self.sample_names))
+
+        # Last Row of all samples Heatmap
+        LastRowCoff = np.corrcoef(self.heatMapLastRow)
+        self.add_section(name='GC Bias Last Row Heatmap', description='Heatmap to display variance between last row ratios of all the samples',
+                         plot=heatmap.plot(LastRowCoff, self.sample_names, self.sample_names))
+
+        # GC Bias HeatMap
+        AverageCoff = np.corrcoef(self.averageBiasHeatMap)
+        self.add_section(name='GC Bias Heatmap', description='Heatmap to display average bias across all samples',
+                         plot=heatmap.plot(AverageCoff, self.sample_names, self.sample_names))
+
+        # Seq 3' Heatmap
+        Seq3HeatMap = np.corrcoef(self.salmon_seq3HeatMap)
+        self.add_section(name='Sequence 3 Heatmap', description='Heatmap to display Sequence 3 prime across all samples',
+                         plot=heatmap.plot(Seq3HeatMap, self.sample_names, self.sample_names))
+
+        # Seq 5' Heatmap
+        Seq5HeatMap = np.corrcoef(self.salmon_seq5HeatMap)
+        self.add_section(name='Sequence 5 Heatmap', description='Heatmap to display Sequence 5 prime across all samples',
+                         plot=heatmap.plot(Seq5HeatMap, self.sample_names, self.sample_names))
